@@ -15,7 +15,7 @@ import astropy.units as u
 import openpyxl
 
 #処理するデータの名前を入力
-data='1zi_orion_V_1.fit'
+data='1zi_orion_I_1.fit'
 #しきい値と半値全幅を入力
 shikiichi=30
 hannchi=15
@@ -98,7 +98,9 @@ def stardetection(data):
 
 
 l=stardetection(data)
-wb=openpyxl.workbook(data+'.xlsx')
+wb=openpyxl.Workbook()
+sheet=wb.active
+sheet.title='Sheet1'
 ws=wb['Sheet1']
 for i in range(1,len(l)+1):
     for j in range(1,4):
