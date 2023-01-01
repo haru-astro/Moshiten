@@ -17,15 +17,15 @@ import openpyxl
 #処理するデータの名前を入力
 data='1zi_orion_I_1.fit'
 #しきい値と半値全幅を入力
-shikiichi=30
+shikiichi=10
 hannchi=15
 #恒星径、sky径、sky幅を入力
-starrad=13
-skyrad=18
+starrad=12
+skyrad=17
 skywid=2
-#標準星の等級とカウント値を入力
-standardmag=11.082
-standardflux=70000
+#標準星の等級とカウント値を入力(ここはMakali'iとかで)
+standardmag=12.375
+standardflux=45928.205874378065
 
 def stardetection(data):
     '''
@@ -62,7 +62,7 @@ def stardetection(data):
     ここから測光です！！
     '''
     apertures = CircularAperture(positions, r=starrad)
-    rawflux = aperture_photometry(img - median, apertures)
+    rawflux = aperture_photometry(img, apertures)
 
     annulus_apertures = CircularAnnulus(positions, r_in=skyrad, r_out=skyrad+skywid)
 
@@ -91,18 +91,23 @@ def stardetection(data):
     等級への変換を行います
     '''
     rawflux['mag']=standardmag-2.5*np.log10(rawflux['final_phot']/standardflux)
+    rawflux.pprint_all()
     table=[]
     for i in range(len(rawflux['mag'])):
         table.append([(rawflux['xcenter'])[i], (rawflux['ycenter'])[i],(rawflux['mag'])[i]])
     return table
 
-
-l=stardetection(data)
-wb=openpyxl.Workbook()
-sheet=wb.active
-sheet.title='Sheet1'
-ws=wb['Sheet1']
-for i in range(1,len(l)+1):
-    for j in range(1,4):
-        ws.cell(row=i,column=j).value=str(l[i-1][j-1])
-wb.save(data+'.xlsx')
+from pathlib import Path
+input_dir='./'
+image_list = list(Path(input_dir).glob('**/*.fit'))
+    
+for k in image_list:
+    l=stardetection(str(k))
+    wb=openpyxl.Workbook()
+    sheet=wb.active
+    sheet.title='Sheet1'
+    ws=wb['Sheet1']
+    for i in range(1,len(l)+1):
+        for j in range(1,4):
+            ws.cell(row=i,column=j).value=str(l[i-1][j-1])
+    wb.save(str(k)+'.xlsx')
