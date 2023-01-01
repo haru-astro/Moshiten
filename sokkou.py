@@ -1,0 +1,93 @@
+'''
+ライブラリのインポート
+#各ライブラリがインストールされてない場合は各自インストールしてください
+'''
+import numpy as np
+import astropy.io.fits as fits
+from astropy import stats
+import glob
+import matplotlib.pyplot as plt
+from astropy.stats import sigma_clipped_stats
+from photutils.detection import DAOStarFinder
+from photutils.aperture import aperture_photometry
+from photutils.aperture import CircularAperture, CircularAnnulus
+import astropy.units as u
+
+#処理するデータの名前を入力
+data='1zi_orion_I_1.fit'
+#しきい値と半値全幅を入力
+shikiichi=10
+hannchi=15
+#恒星径、sky径、sky幅を入力
+starrad=13
+skyrad=18
+skywid=2
+#標準星の等級とカウント値を入力
+standardmag=11.082
+standardflux=70000
+
+
+'''
+まずは星の検出から！！
+'''
+
+img = fits.getdata(data)
+median = np.median(img)
+stddev = np.std(img)
+
+
+idx = (img > -420) & (img < 420) 
+# 外れ値を削るために、n-σクリッピングを行う
+mean, median, std = sigma_clipped_stats(img, sigma=3.0)
+
+
+# DAOstarfinderという道具を使って星を見つける
+# https://photutils.readthedocs.io/en/stable/api/photutils.detection.DAOStarFinder.html
+
+daofind = DAOStarFinder(fwhm=hannchi, threshold=shikiichi*std)  
+sources = daofind(img)  
+
+positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
+apertures = CircularAperture(positions, r=13.)
+'''
+plt.figure(figsize=(7, 14))
+plt.imshow(img, plt.cm.gray, vmin=median - 5*std, vmax = median + 5*std, origin='lower', interpolation='none')
+apertures.plot(color='blue', lw=3.0, alpha=1.0)
+plt.show()
+'''
+
+'''
+ここから測光です！！
+'''
+apertures = CircularAperture(positions, r=starrad)
+rawflux = aperture_photometry(img - median, apertures)
+
+annulus_apertures = CircularAnnulus(positions, r_in=skyrad, r_out=skyrad+skywid)
+
+#それぞれの星の周りのわっかの中に、近くの天体からの明るい画素が含まれていないことを確認するために、単純に平均を取るのではなくて、各わっかの中央値をシグマクリッピングして計算する。
+#これを行うために、わっか内のピクセルの位置に1を、わっか外のピクセルの位置に0を含むマスクのセットを作成。
+#次に、マスクをループして、それぞれのマスクにデータを掛け、0よりも大きいピクセル、つまりわっかの内側にあるピクセルだけを選択します。
+#そして，わっか内のピクセルのシグマクリッピングされた中央値を計算し，それを新しい配列に保存。
+annulus_masks = annulus_apertures.to_mask(method='center')
+bkg_median = []
+for mask in annulus_masks:
+    annulus_data = mask.multiply(img)
+    annulus_data_1d = annulus_data[mask.data > 0]
+    _, median_sigclip, _ = sigma_clipped_stats(annulus_data_1d)
+    bkg_median.append(median_sigclip)
+
+bkg_median = np.array(bkg_median)
+rawflux['annulus_median'] = bkg_median
+rawflux['aper_bkg'] = bkg_median*apertures.area
+rawflux['final_phot'] = rawflux['aperture_sum'] - rawflux['aper_bkg']
+
+'''
+これでカウント値の導出は完了です！！
+'''
+
+'''
+等級への変換を行います
+'''
+rawflux['mag']=standardmag-2.5*np.log10(rawflux['final_phot']/standardflux)
+for i in range(rawflux['mag']):
+    print(i)
