@@ -89,5 +89,4 @@ rawflux['final_phot'] = rawflux['aperture_sum'] - rawflux['aper_bkg']
 等級への変換を行います
 '''
 rawflux['mag']=standardmag-2.5*np.log10(rawflux['final_phot']/standardflux)
-for i in range(rawflux['mag']):
-    print(i)
+print(rawflux)
