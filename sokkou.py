@@ -14,18 +14,18 @@ from photutils.aperture import CircularAperture, CircularAnnulus
 import astropy.units as u
 import openpyxl
 
-#処理するデータの名前を入力
-data='1zi_orion_I_1.fit'
 #しきい値と半値全幅を入力
 shikiichi=10
 hannchi=15
 #恒星径、sky径、sky幅を入力
-starrad=12
-skyrad=17
+starrad=13
+skyrad=18
 skywid=2
 #標準星の等級とカウント値を入力(ここはMakali'iとかで)
-standardmag=12.375
-standardflux=45928.205874378065
+#手順としては標準星を、適当な値を標準星のカウント値に入れたPythonで一度開口測光
+#→その値をPythonの上の標準星のカウント値に入れ直してもう一度正しい開口測光
+standardmag=12.992
+standardflux=107848.05183789926
 
 def stardetection(data):
     '''
